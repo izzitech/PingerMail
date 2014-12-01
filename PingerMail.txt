@@ -1,0 +1,25 @@
+InnovoPinger es un super programa para pingear PCs que envía un email con el estado de las mismas.
+Sirve para comprobar si un servidor o PC está encendido o no.
+
+En principio voy a hacer una lista con los terminales.
+La información recopilada sería la siguiente:
+
+- direccionIP
+- nombre
+- ubicacion
+- descripcion
+- estado
+
+Se debería almacenar en XML y en la memoria.
+Debería ser recorrida para ir haciendo pings a cada host y almacenar una lista con los que están caídos.
+Luego debería enviar un mail con una lista de los host que están caídos.
+
+En el estado se debería poder definir si el host está activo o no. Como para poder ignorarlo por alguna razón.
+
+** Estados **
+- Normal
+- Ignorar
+
+2014-11-25 	- Nombre cambiado a MailPinger para que sea más fácil entender su fucionamiento a simple vista.
+			- Varios cambios en la forma de almacenar la configuración en DataInterna.xml
+			- Reemplazada la librería InnoUtils por izzimail. Razón: simplicidad y prolijidad.
