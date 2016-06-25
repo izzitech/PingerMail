@@ -3,19 +3,25 @@
 //
 //  Autor: Iván E. Sierra
 //  Fecha: Miercoles 28 de Agosto de 2013
-//  Ultima modificación: Miercoles 1 de Diciembre de 2014
+//  Modificación: Miercoles 1 de Diciembre de 2014
+//  Ultima modificación: Sábado 25 de Junio de 2016 - Multithreading
 // *********************************************************************
 
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Net.NetworkInformation;
+using System.Threading;
 using System.Windows.Forms;
 using System.Xml.Linq;
 
 namespace PingerMail {
     public partial class Form1 : Form {
         XDocument xml = new XDocument();
+
+        // Para multithreading
+        static List<Terminal> terminales;
+        delegate void terminalDelegate(int id, bool status);
 
         //DataTable dtDGVhosts;
         //DataView dvDGVhosts;
@@ -31,7 +37,9 @@ namespace PingerMail {
             // dvDGVhosts = new DataView(dtDGVhosts);
 
             DataInternaIO.read();
+            dataGridView1.SuspendLayout();
             dataGridView1.DataSource = DataInternaIO.dataInterna.Terminales;
+            dataGridView1.ResumeLayout();
 
             checkBox1.Checked = DataInternaIO.dataInterna.ChequeoAutomatico;
             checkBox3.Checked = DataInternaIO.dataInterna.EnviaMailAutomatico;
@@ -134,7 +142,44 @@ namespace PingerMail {
             return terminalesConFalla;
         }
 
+        private static void PingearTerminalesMultithreading() {
+            Ping ping = new Ping();
+            MethodInvoker updateTerminalStatus = new MethodInvoker(terminalDelegate);
+            for(int i = 0; i < terminales.Count; i++) {
+                PingReply pingReply = ping.Send(terminales[i].direccionIP);
+                if(pingReply.Status == IPStatus.Success) {
+                    // CALL DELEGATE!
+                    // terminales[i].online = true;
+
+                    
+                }
+                else {
+                    // CALL DELEGATE!
+                    // terminales[i].online = false;
+                }
+            }
+        }
+
+        private List<Terminal> DevolverTerminalesConFalla() {
+            List<Terminal> terminalesConFalla = new List<Terminal>();
+
+            for(int i = 0; i < terminales.Count; i++) {
+                if(terminales[i].online == false) {
+                    Terminal terminalConFalla = new Terminal();
+                    terminalConFalla.direccionIP = terminales[i].direccionIP;
+                    terminalConFalla.nombre = terminales[i].nombre;
+                    terminalConFalla.ubicacion = terminales[i].ubicacion;
+                    terminalConFalla.descripcion = terminales[i].descripcion;
+                    terminalesConFalla.Add(terminalConFalla);
+                }
+            }
+            return terminalesConFalla;
+        }
+
         private void ColorearTerminalesEnDGV() {
+            dataGridView1.SuspendLayout();
+            toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
+
             for (int i = 0; i < dataGridView1.Rows.Count; i++) {
                 if ((bool)dataGridView1.Rows[i].Cells["Online"].Value) {
                     dataGridView1.Rows[i].DefaultCellStyle.BackColor = Color.Green;
@@ -142,7 +187,21 @@ namespace PingerMail {
                     dataGridView1.Rows[i].DefaultCellStyle.BackColor = Color.Red;
                 }
             }
+
+            dataGridView1.ResumeLayout();
+            toolStripProgressBar1.Style = ProgressBarStyle.Continuous;
         }
+
+        // Para multithreading
+        void ActualizarEstadoDeTerminal(int id, bool status) {
+            if(InvokeRequired) {
+                BeginInvoke(new terminalDelegate(ActualizarEstadoDeTerminal), new object[] { id, status });
+                return;
+            }
+
+            terminales[id].online = status;
+        }
+
 
         private void EnviarInformePorMail(List<Terminal> terminalesConFalla) {
             string cadenaTerminalesConFalla;
@@ -197,8 +256,14 @@ namespace PingerMail {
         #endregion
 
         private void button3_Click(object sender, EventArgs e) {
-            PingearYDevolverTerminalesConFalla(ref DataInternaIO.dataInterna.Terminales);
-            ColorearTerminalesEnDGV();
+            // PingearYDevolverTerminalesConFalla(ref DataInternaIO.dataInterna.Terminales);
+            // ColorearTerminalesEnDGV();
+
+            // Para Multithreading
+            ThreadStart ts = new ThreadStart(PingearTerminalesMultithreading);
+            Thread thread = new Thread(ts);
+
+
         }
 
         private void button1_Click(object sender, EventArgs e) {
